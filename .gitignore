@@ -1,0 +1,18 @@
+# secrets
+.env
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# generated artifacts
+output/
+
+# local state (SQLite stores — keyword universe + API response cache)
+*.db
+
+# runtime logs & deprecated artifacts
+*.log
+topics.jsonl
