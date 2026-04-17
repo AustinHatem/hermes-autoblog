@@ -131,7 +131,7 @@ def build_post(md_path: Path) -> dict:
         "slug": slug,
         "content": html_content,
         "contentType": "html",
-        "subtitle": "AI-generated SEO article",
+        "subtitle": "Updated guide from SomeSomeone Editorial",
         "date": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "authorName": "SomeSomeone Team",
         "authorPosition": "Editorial",
@@ -145,9 +145,7 @@ def build_post(md_path: Path) -> dict:
         post["coverImage"] = image["url"]
         post["coverImageAlt"] = image["alt"]
         credit = f"Photo by {image['photographer']} on Unsplash"
-        if image.get("photo_page"):
-            credit += f" ({image['photo_page']})"
-        post["subtitle"] = f"AI-generated SEO article • {credit}"
+        post["subtitle"] = f"Updated guide • {credit}"
 
     return post
 
