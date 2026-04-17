@@ -18,6 +18,8 @@ from openai import OpenAI
 
 load_dotenv()
 
+from lib.brand import BRAND_CONTEXT, BRAND_INTEGRATION_RULES, BRAND_NAME
+
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 WRITER_MODEL = os.getenv("WRITER_MODEL", "gpt-5")
 BEDROCK_MODEL_ID = os.getenv(
@@ -45,6 +47,7 @@ RUBRIC_DIMENSIONS = [
     "readability",               # clear prose, varied sentence length, no bloat
     "factual_accuracy",          # claims are defensible, no hallucinated stats
     "engagement",                # hook, transitions, compelling examples
+    "brand_integration",         # brand named 3+ times, linked, editorial (not salesy)
 ]
 
 
@@ -54,9 +57,15 @@ def word_count(text: str) -> int:
     return len(cleaned.split())
 
 
-WRITER_SYSTEM = f"""You are a senior SEO content writer. You write blog posts that rank
-on page 1 of Google because they actually deserve to — genuine depth, clear
-structure, and keywords integrated naturally (never stuffed).
+WRITER_SYSTEM = f"""You are a senior SEO content writer for the brand below.
+You write blog posts that rank on page 1 of Google because they actually deserve
+to — genuine depth, clear structure, and keywords integrated naturally (never
+stuffed). The posts are published on the brand's own blog, so the brand must
+appear naturally within the content.
+
+{BRAND_CONTEXT}
+
+{BRAND_INTEGRATION_RULES}
 
 OUTPUT RULES (non-negotiable):
 - Length: {WORD_MIN}–{WORD_MAX} words of body prose (aim for ~2000).
@@ -112,6 +121,13 @@ Follow all the output rules. Begin now."""
 REVIEWER_SYSTEM = f"""You are a ruthless SEO editor reviewing a blog post for a
 competitive niche. You are NOT the writer — your job is to find weaknesses.
 
+The blog is published on {BRAND_NAME}'s own site, so {BRAND_NAME} must appear
+in the content editorially. Score brand_integration based on: is {BRAND_NAME}
+mentioned 3+ times, linked once, included naturally in lists/comparisons/tables
+where appropriate, and closed with a soft CTA — WITHOUT reading like a
+sales page? If {BRAND_NAME} is missing or named once as an afterthought,
+brand_integration = 1-3.
+
 You will score the draft on these dimensions, each 1–10:
 {chr(10).join(f"  - {d}" for d in RUBRIC_DIMENSIONS)}
 
@@ -123,17 +139,28 @@ Respond with ONLY valid JSON, no prose before or after, matching this schema:
 {{
   "scores": {{ {", ".join(f'"{d}": <int 1-10>' for d in RUBRIC_DIMENSIONS)} }},
   "word_count_ok": <bool, true if roughly {WORD_MIN}-{WORD_MAX} words>,
+  "brand_mentions": <int, count of times the brand name appears>,
   "top_issues": [<1-5 specific, actionable fixes. Each a short string.>],
   "keep_doing": [<1-3 things the draft got right>],
   "verdict": "<one short sentence>"
 }}"""
 
 
+def _brand_mention_count(draft: str) -> int:
+    return len(re.findall(re.escape(BRAND_NAME), draft, flags=re.IGNORECASE))
+
+
 def reviewer_evaluate(topic: str, keywords: list[str], draft: str) -> dict:
     kw = ", ".join(keywords)
+    mentions = _brand_mention_count(draft)
+    brand_note = (
+        f"BRAND-NAME MENTIONS (mechanical count): {mentions} — "
+        + ("OK" if mentions >= 3 else f"LOW (<3): score brand_integration accordingly")
+    )
     user_msg = f"""TOPIC: {topic}
 TARGET KEYWORDS: {kw}
 WORD COUNT (measured): {word_count(draft)}
+{brand_note}
 
 --- DRAFT ---
 {draft}

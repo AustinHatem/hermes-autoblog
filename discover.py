@@ -25,6 +25,7 @@ import boto3
 from openai import OpenAI
 
 from lib import autocomplete, dataforseo, store
+from lib.brand import BRAND_CONTEXT
 
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 WRITER_MODEL = os.getenv("WRITER_MODEL", "gpt-5")
@@ -38,21 +39,6 @@ if not OPENAI_KEY:
 
 openai_client = OpenAI(api_key=OPENAI_KEY)
 bedrock = boto3.client("bedrock-runtime", region_name=AWS_REGION)
-
-
-BRAND_CONTEXT = """BRAND: Someone Somewhere (https://somesome.co)
-PITCH: Global video chat made safe with AI filtering, deep verification, and dedicated moderation.
-KEY FEATURES: AI translation (cross-language video chat), unlimited messaging between sessions, verification, AI content filtering, human moderation.
-POSITIONING: Safer, more international alternative to Omegle / Monkey / Chatroulette / Ome.tv.
-AUDIENCE: General adults 18–35 looking to meet people globally, practice languages, make international friends.
-
-CONTENT PILLARS:
-  1. alternatives     — Omegle alternatives / apps like Monkey — high-volume refugee searches
-  2. safety           — "is X safe", "how to video chat safely"
-  3. language_exchange— "practice English with strangers", "make international friends"
-  4. comparison       — Someone Somewhere vs Monkey / Ome.tv / Azar / CooMeet
-  5. howto            — etiquette, conversation starters, first video chat tips
-"""
 
 
 BRAINSTORM_PROMPT = """You generate blog topic ideas for the SEO strategy below.
