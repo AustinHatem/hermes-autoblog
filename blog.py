@@ -57,6 +57,50 @@ def word_count(text: str) -> int:
     return len(cleaned.split())
 
 
+def clean_markdown(text: str) -> str:
+    """Defensive post-processing so output renders cleanly in any CMS.
+
+    Fixes common writer slips:
+      - doubled list markers ("- - Best for" → "- Best for")
+      - unicode bullets (•) or asterisk bullets at line start → "-"
+      - trailing whitespace on every line
+      - collapses 3+ blank lines to 1 blank line
+      - ensures blank line before each heading
+    """
+    lines = text.splitlines()
+    out: list[str] = []
+    for line in lines:
+        stripped = line.rstrip()
+        # Collapse any "- - " / "* - " / "- * " / "• - " at line start (with optional indent)
+        m = re.match(r"^(\s*)([-*•])\s+[-*•]\s+(.*)$", stripped)
+        if m:
+            stripped = f"{m.group(1)}- {m.group(3)}"
+        # Normalize bullet char to `-` (keep indent)
+        stripped = re.sub(r"^(\s*)[*•](\s+)", r"\1-\2", stripped)
+        out.append(stripped)
+
+    # Ensure a blank line before any heading (H1/H2/H3)
+    fixed: list[str] = []
+    for i, line in enumerate(out):
+        if re.match(r"^#{1,6}\s", line) and fixed and fixed[-1].strip() != "":
+            fixed.append("")
+        fixed.append(line)
+
+    # Collapse 3+ consecutive blank lines down to 1
+    collapsed: list[str] = []
+    blank_run = 0
+    for line in fixed:
+        if line.strip() == "":
+            blank_run += 1
+            if blank_run <= 1:
+                collapsed.append(line)
+        else:
+            blank_run = 0
+            collapsed.append(line)
+
+    return "\n".join(collapsed).strip() + "\n"
+
+
 WRITER_SYSTEM = f"""You are a senior SEO content writer for the brand below.
 You write blog posts that rank on page 1 of Google because they actually deserve
 to — genuine depth, clear structure, and keywords integrated naturally (never
@@ -80,7 +124,21 @@ OUTPUT RULES (non-negotiable):
 - No fluff intros ("In today's fast-paced world..."). Get to the point.
 - No invented statistics. If you cite a number, make sure it's commonly
   known or clearly framed as illustrative.
-- Write in an authoritative, helpful voice. Second person ("you") is fine."""
+- Write in an authoritative, helpful voice. Second person ("you") is fine.
+
+MARKDOWN FORMATTING (strict — these make the output render cleanly in any CMS):
+- Use `-` for every bullet. NEVER use `*` or `•` (unicode bullets) or `—` as list markers.
+- Never put a dash or bullet character inside bullet content. Write
+  `- Best for: fast matches`, NOT `- - Best for: fast matches`.
+- Never output two list markers in a row on the same line.
+- EVERY non-intro section gets an H2 heading (`## Section title`). In a
+  ranked listicle, EVERY ranked entry gets its own H3 heading (`### 1) Name`,
+  `### 2) Name`, etc.) — do not put ranked entries under one shared heading
+  with only bullets separating them.
+- No trailing whitespace on any line (no "two-space soft-break" markdown).
+- Leave exactly one blank line before every H2 and H3.
+- Tables: use standard Markdown pipe tables with a header separator row.
+- Don't use HTML in the output."""
 
 
 def writer_generate(topic: str, keywords: list[str], prior_feedback: str | None,
@@ -115,7 +173,7 @@ Follow all the output rules. Begin now."""
             {"role": "user", "content": user_msg},
         ],
     )
-    return resp.choices[0].message.content.strip()
+    return clean_markdown(resp.choices[0].message.content.strip())
 
 
 REVIEWER_SYSTEM = f"""You are a ruthless SEO editor reviewing a blog post for a
