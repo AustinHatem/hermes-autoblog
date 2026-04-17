@@ -92,22 +92,41 @@ Python 3.11+ recommended.
 
 ### 1. Seed the topic queue (run whenever you want more angles)
 
+Two modes — use both, they complement each other:
+
+**Broad niche mode** — exploratory, spreads across all content pillars. Good for
+the first seeding of a niche.
+
 ```bash
 python discover.py --niche "omegle alternatives, random video chat" --brainstorm 20
 ```
 
-What happens:
-- GPT-5 brainstorms 20 candidate topics, each with 2–4 seed keywords
+**Cluster mode** — saturates one high-volume keyword with N genuinely distinct
+angles (different demographics, years, feature angles, listicle variants, etc.).
+Use this whenever you want to build topical authority around a specific
+money keyword.
+
+```bash
+python discover.py --cluster "omegle alternatives" --brainstorm 20
+python discover.py --cluster "apps like monkey" --brainstorm 15
+python discover.py --cluster "chatroulette alternatives" --brainstorm 10
+```
+
+Cluster mode's brainstorm prompt enumerates angle dimensions (year /
+demographic / platform / price / use-case / feature / region / listicle size /
+comparison / problem-framing / safety lens / question-framing) and GPT-5 mixes
+them to produce distinct titles that all target the primary keyword.
+
+What happens in both modes:
+- GPT-5 brainstorms N candidate topics with seed keywords
 - For each seed, Google Autocomplete pulls \~20 real long-tails
 - DataForSEO batches all fresh (uncached, >30 days old) keywords into **one**
   call and fetches volume/competition/cpc
 - Sonnet scores all candidates 0–10 and assigns 3–5 final keywords per topic
 - Topics upsert into `store.db` — **exact-title duplicates are silently
-  skipped**, letting you run discover multiple times with different niches
-  without polluting the queue
+  skipped**, letting you run discover many times without polluting the queue
 
-Running discover again with a different niche **merges** into the same store.
-Repeated keywords skip DFS (cached). Repeated titles skip insert.
+Repeated keywords skip DFS (cached). Repeated titles skip insert. Run often.
 
 ### 2. Inspect the queue
 
